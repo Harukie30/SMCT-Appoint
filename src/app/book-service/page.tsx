@@ -11,8 +11,8 @@ import {
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
-import branches from "@/data/branches.json";
-import services from "@/data/services.json";
+// import branches from "@/data/branches.json";
+// import services from "@/data/services.json";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
@@ -76,6 +76,9 @@ export default function BookServicePage() {
   const [fakeLoading, setFakeLoading] = useState(true);
   // Show loading after confirming booking
   const [postSubmitLoading, setPostSubmitLoading] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [formError, setFormError] = useState<string>("");
 
   useEffect(() => {
     const timer = setTimeout(() => setFakeLoading(false), 1500);
@@ -101,6 +104,17 @@ export default function BookServicePage() {
         localStorage.removeItem("rescheduleBooking");
       }
     }
+  }, []);
+
+  useEffect(() => {
+    // Fetch branches from API
+    fetch('/api/branches')
+      .then(res => res.json())
+      .then(data => setBranches(data));
+    // Fetch services from API
+    fetch('/api/services')
+      .then(res => res.json())
+      .then(data => setServices(data));
   }, []);
 
   if (fakeLoading) {
@@ -386,6 +400,7 @@ export default function BookServicePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPostSubmitLoading(true);
+    setFormError("");
     const booking = {
       branch,
       service,
@@ -398,12 +413,36 @@ export default function BookServicePage() {
       model,
       notes,
     };
+    // Debug log
+    console.log("Booking to submit:", booking);
+    // Validate required fields
+    const requiredFields = [
+      { key: 'branch', value: branch },
+      { key: 'service', value: service },
+      { key: 'date', value: date },
+      { key: 'time', value: time },
+      { key: 'name', value: name },
+      { key: 'phone', value: phone },
+      { key: 'email', value: email },
+    ];
+    const missing = requiredFields.find(f => !f.value || (typeof f.value === 'string' && f.value.trim() === ''));
+    if (missing) {
+      setFormError(`Please fill in the required field: ${missing.key}`);
+      setPostSubmitLoading(false);
+      return;
+    }
     // Send booking to API
-    await fetch('/api/bookings', {
+    const res = await fetch('/api/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(booking),
     });
+    if (!res.ok) {
+      const data = await res.json();
+      setFormError(data.error || 'Failed to submit booking');
+      setPostSubmitLoading(false);
+      return;
+    }
     setTimeout(() => {
       // Save booking data to localStorage
       localStorage.setItem("lastBooking", JSON.stringify(booking));
@@ -449,9 +488,9 @@ export default function BookServicePage() {
   };
 
   const locations = Array.from(
-    new Set((branches as Branch[]).map((b) => b.location))
+    new Set(branches.map((b) => b.location))
   );
-  const filteredBranches = (branches as Branch[]).filter((b) => {
+  const filteredBranches = branches.filter((b) => {
     const matchesLocation = selectedLocation
       ? b.location === selectedLocation
       : true;
@@ -464,10 +503,10 @@ export default function BookServicePage() {
 
   // For vehicle type selection
   const vehicleTypes = Array.from(
-    new Set((services as Service[]).map((s) => s.vehicleType))
+    new Set(services.map((s) => s.vehicleType))
   );
   // For service filtering
-  const filteredServices = (services as Service[])
+  const filteredServices = services
     .filter((s) =>
       vehicleType
         ? s.vehicleType === vehicleType || s.vehicleType === "all"
@@ -543,6 +582,11 @@ export default function BookServicePage() {
 
           {/* Main content */}
           <div className="p-6">
+            {formError && (
+              <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-3 text-center text-sm font-medium text-red-600 dark:text-red-400 shadow mb-2">
+                {formError}
+              </div>
+            )}
             <AnimatePresence mode="wait">
               {submitted ? (
                 <motion.div
