@@ -1,0 +1,5 @@
+[
+  { "id": 1, "name": "TAGB HO", "address": "123 Main St", "hours": "9AM-7PM", "location": "City Center" },
+  { "id": 2, "name": "TAGB HO2", "address": "456 High Ave", "hours": "8AM-8PM", "location": "City Center" },
+  { "id": 3, "name": "Suburb", "address": "789 Park Blvd", "hours": "10AM-6PM", "location": "Suburbs" }
+] 

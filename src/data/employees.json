@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "branch": "Main Branch",
+    "password": "emp123"
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "jane.smith@example.com",
+    "branch": "Main Branch"
+  },
+  {
+    "id": 3,
+    "name": "Alice Brown",
+    "email": "alice.brown@example.com",
+    "branch": "Branch B"
+  }
+] 

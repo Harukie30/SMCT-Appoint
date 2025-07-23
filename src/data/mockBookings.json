@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "branch": "Main Branch",
+    "service": "Oil Change",
+    "date": "2024-06-10",
+    "time": "10:00",
+    "name": "John Doe",
+    "phone": "1234567890",
+    "email": "john@example.com",
+    "plate": "ABC123",
+    "model": "Toyota Camry",
+    "notes": "Please check brakes"
+  },
+  {
+    "id": 2,
+    "branch": "Main Branch",
+    "service": "Tire Rotation",
+    "date": "2024-06-11",
+    "time": "14:00",
+    "name": "Jane Smith",
+    "phone": "0987654321",
+    "email": "jane@example.com",
+    "plate": "XYZ789",
+    "model": "Honda Civic",
+    "notes": "Rotate all tires"
+  }
+] 
