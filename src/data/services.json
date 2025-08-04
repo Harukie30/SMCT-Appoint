@@ -1,42 +1,10 @@
 [
   {
-    "id": 1,
-    "name": "Car tool",
-    "duration": "30 mins",
-    "price": "$35",
-    "vehicleType": "car",
-    "category": "Maintenance"
-  },
-  {
-    "id": 2,
-    "name": "Car Wash",
-    "duration": "45 mins",
-    "price": "$25",
-    "vehicleType": "car",
-    "category": "Maintenance"
-  },
-  {
-    "id": 3,
-    "name": "Motorcycle Oil Change",
-    "duration": "20 mins",
-    "price": "$20",
-    "vehicleType": "motorcycle",
-    "category": "Maintenance"
-  },
-  {
-    "id": 4,
-    "name": "Motorcycle major maintenance",
-    "duration": "20 mins",
-    "price": "$20",
-    "vehicleType": "motorcycle",
-    "category": "Maintenance"
-  },
-  {
-    "name": "kaon",
-    "duration": "kaon ",
-    "price": "kaon",
-    "vehicleType": "kaon",
-    "category": "Maintenace",
-    "id": 5
+    "name": "Car Cleaning ",
+    "duration": "25mins",
+    "price": "90",
+    "vehicleType": "SUV",
+    "category": "Car",
+    "id": 1
   }
 ]

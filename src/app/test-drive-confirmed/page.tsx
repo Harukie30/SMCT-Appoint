@@ -4,15 +4,25 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircleIcon,
-  WrenchScrewdriverIcon,
+  TruckIcon,
   MapPinIcon,
   UserIcon,
   CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-
 import Image from "next/image";
-import { localStorageManager, BookingData } from "@/types/localStorage";
+
+// Test drive booking data interface
+interface TestDriveBookingData {
+  id?: number;
+  branch: string;
+  model: string;
+  date: string;
+  time: string;
+  name: string;
+  phone: string;
+  email: string;
+}
 
 function formatDate(dateString: string) {
   if (!dateString) return "";
@@ -26,7 +36,7 @@ function formatDate(dateString: string) {
 }
 
 // POST request functions
-const sendEmailConfirmation = async (bookingData: BookingData) => {
+const sendTestDriveEmailConfirmation = async (bookingData: TestDriveBookingData) => {
   try {
     const response = await fetch('/api/send-email', {
       method: 'POST',
@@ -35,8 +45,9 @@ const sendEmailConfirmation = async (bookingData: BookingData) => {
       },
       body: JSON.stringify({
         to: bookingData.email,
-        subject: 'Booking Confirmation',
+        subject: 'Test Drive Confirmation',
         booking: bookingData,
+        type: 'test-drive'
       }),
     });
 
@@ -52,15 +63,16 @@ const sendEmailConfirmation = async (bookingData: BookingData) => {
   }
 };
 
-export default function ConfirmedPage() {
-  const [booking, setBooking] = useState<BookingData | null>(null);
+export default function TestDriveConfirmedPage() {
+  const [booking, setBooking] = useState<TestDriveBookingData | null>(null);
   const router = useRouter();
   const printRef = useRef<HTMLDivElement>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
 
   // Load booking from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem("lastBooking");
+    const stored = localStorage.getItem("lastTestDriveBooking");
     if (stored) {
       setBooking(JSON.parse(stored));
     }
@@ -71,18 +83,19 @@ export default function ConfirmedPage() {
   };
 
   const handleReschedule = () => {
-    localStorageManager.setRescheduleBooking();
-    router.push("/book-service");
+    localStorage.setItem("rescheduleTestDrive", "true");
+    router.push("/test-drive");
   };
 
   // Send email confirmation
   const handleSendEmail = useCallback(async () => {
     if (!booking) return;
 
+    setSendingEmail(true);
     setEmailStatus('sending');
 
     try {
-      const result = await sendEmailConfirmation(booking);
+      const result = await sendTestDriveEmailConfirmation(booking);
       
       if (result.success) {
         setEmailStatus('success');
@@ -94,6 +107,8 @@ export default function ConfirmedPage() {
     } catch (error) {
       setEmailStatus('error');
       console.error('Error sending email:', error);
+    } finally {
+      setSendingEmail(false);
     }
   }, [booking]);
 
@@ -101,7 +116,7 @@ export default function ConfirmedPage() {
   useEffect(() => {
     if (booking) {
       // Save booking to localStorage
-      localStorage.setItem("lastBooking", JSON.stringify(booking));
+      localStorage.setItem("lastTestDriveBooking", JSON.stringify(booking));
       
       // Auto-send email confirmation
       handleSendEmail();
@@ -110,12 +125,12 @@ export default function ConfirmedPage() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-500 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">No Booking Found</h2>
-          <p className="text-gray-600 mb-6">It seems there&apos;s no booking to display.</p>
-          <Button onClick={() => router.push("/book-service")} className="bg-blue-600 hover:bg-blue-700">
-            Book a Service
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">No Test Drive Booking Found</h2>
+          <p className="text-gray-600 mb-6">It seems there's no test drive booking to display.</p>
+          <Button onClick={() => router.push("/test-drive")} className="bg-green-600 hover:bg-green-700">
+            Book a Test Drive
           </Button>
         </div>
       </div>
@@ -123,7 +138,7 @@ export default function ConfirmedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
@@ -141,10 +156,10 @@ export default function ConfirmedPage() {
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Service Booking Confirmed!
+            Test Drive Confirmed!
           </h1>
           <p className="text-gray-600">
-            Your service appointment has been successfully scheduled
+            Your test drive experience has been successfully scheduled
           </p>
         </motion.div>
 
@@ -159,25 +174,25 @@ export default function ConfirmedPage() {
             className="bg-white rounded-xl shadow-lg p-6"
           >
             <div className="flex items-center gap-3 mb-6">
-              <CheckCircleIcon className="h-8 w-8 text-blue-500" />
+              <CheckCircleIcon className="h-8 w-8 text-green-500" />
               <h2 className="text-2xl font-semibold text-gray-800">
                 Booking Details
               </h2>
             </div>
 
             <div className="space-y-4">
-              {/* Service */}
+              {/* Car Model */}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <WrenchScrewdriverIcon className="h-5 w-5 text-blue-500" />
+                <TruckIcon className="h-5 w-5 text-green-500" />
                 <div>
-                  <p className="text-sm text-gray-600">Service</p>
-                  <p className="font-semibold text-gray-800">{booking.service}</p>
+                  <p className="text-sm text-gray-600">Car Model</p>
+                  <p className="font-semibold text-gray-800">{booking.model}</p>
                 </div>
               </div>
 
               {/* Branch */}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <MapPinIcon className="h-5 w-5 text-blue-500" />
+                <MapPinIcon className="h-5 w-5 text-green-500" />
                 <div>
                   <p className="text-sm text-gray-600">Branch</p>
                   <p className="font-semibold text-gray-800">{booking.branch}</p>
@@ -186,7 +201,7 @@ export default function ConfirmedPage() {
 
               {/* Date */}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <CalendarDaysIcon className="h-5 w-5 text-blue-500" />
+                <CalendarDaysIcon className="h-5 w-5 text-green-500" />
                 <div>
                   <p className="text-sm text-gray-600">Date</p>
                   <p className="font-semibold text-gray-800">
@@ -197,7 +212,7 @@ export default function ConfirmedPage() {
 
               {/* Time */}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <CalendarDaysIcon className="h-5 w-5 text-blue-500" />
+                <CalendarDaysIcon className="h-5 w-5 text-green-500" />
                 <div>
                   <p className="text-sm text-gray-600">Time</p>
                   <p className="font-semibold text-gray-800">{booking.time}</p>
@@ -206,7 +221,7 @@ export default function ConfirmedPage() {
 
               {/* Customer Info */}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <UserIcon className="h-5 w-5 text-blue-500" />
+                <UserIcon className="h-5 w-5 text-green-500" />
                 <div>
                   <p className="text-sm text-gray-600">Customer</p>
                   <p className="font-semibold text-gray-800">{booking.name}</p>
@@ -225,27 +240,27 @@ export default function ConfirmedPage() {
             className="space-y-6"
           >
             {/* What to Expect */}
-            <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-4 flex items-center gap-2">
-                <WrenchScrewdriverIcon className="h-5 w-5" />
+            <div className="bg-green-50 rounded-xl p-6 border border-green-200">
+              <h3 className="text-lg font-semibold text-green-800 mb-4 flex items-center gap-2">
+                <TruckIcon className="h-5 w-5" />
                 What to Expect
               </h3>
-              <ul className="space-y-3 text-sm text-blue-700">
+              <ul className="space-y-3 text-sm text-green-700">
                 <li className="flex items-start gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></span>
                   <span>Confirmation call within 24 hours</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
-                  <span>Email with service details and directions</span>
+                  <span className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></span>
+                  <span>Email with dealership details and directions</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
-                  <span>Reminder 1 day before your appointment</span>
+                  <span className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></span>
+                  <span>Reminder 1 day before your test drive</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
-                  <span>Bring your vehicle and any relevant documents</span>
+                  <span className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></span>
+                  <span>Bring your valid driver's license</span>
                 </li>
               </ul>
             </div>
@@ -256,10 +271,10 @@ export default function ConfirmedPage() {
                 Important Notes
               </h3>
               <ul className="space-y-2 text-sm text-blue-700">
-                <li>• Service appointments typically last 1-3 hours</li>
+                <li>• Test drives typically last 15-30 minutes</li>
                 <li>• Arrive 10 minutes before your scheduled time</li>
-                <li>• Our technicians will inspect your vehicle thoroughly</li>
-                <li>• Feel free to ask questions about the service</li>
+                <li>• Our staff will accompany you during the test drive</li>
+                <li>• Feel free to ask questions about the vehicle</li>
               </ul>
             </div>
 
@@ -269,7 +284,7 @@ export default function ConfirmedPage() {
                 Need Help?
               </h3>
               <p className="text-sm text-gray-600 mb-3">
-                If you need to modify or cancel your appointment:
+                If you need to modify or cancel your test drive:
               </p>
               <div className="space-y-2 text-sm">
                 <p className="flex items-center gap-2">
@@ -278,7 +293,7 @@ export default function ConfirmedPage() {
                 </p>
                 <p className="flex items-center gap-2">
                   <span className="font-medium">Email:</span>
-                  <span>service@smct.com</span>
+                  <span>testdrive@smct.com</span>
                 </p>
               </div>
             </div>
@@ -294,17 +309,17 @@ export default function ConfirmedPage() {
         >
           <Button
             onClick={handleReschedule}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
           >
-            Reschedule Appointment
+            Reschedule Test Drive
           </Button>
           
           <Button
-            onClick={() => router.push("/book-service")}
+            onClick={() => router.push("/test-drive")}
             variant="outline"
-            className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3"
+            className="border-green-600 text-green-600 hover:bg-green-50 px-8 py-3"
           >
-            Book Another Service
+            Book Another Test Drive
           </Button>
           
           <Button
@@ -333,7 +348,7 @@ export default function ConfirmedPage() {
             animate={{ opacity: 1 }}
             className="mt-6 text-center"
           >
-            <p className="text-sm text-blue-600">✓ Confirmation email sent successfully!</p>
+            <p className="text-sm text-green-600">✓ Confirmation email sent successfully!</p>
           </motion.div>
         )}
 
@@ -374,4 +389,4 @@ export default function ConfirmedPage() {
       `}</style>
     </div>
   );
-}
+} 

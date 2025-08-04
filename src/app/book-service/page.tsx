@@ -15,22 +15,16 @@ import { motion, AnimatePresence } from "framer-motion";
 // import services from "@/data/services.json";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
 
-// Simulate dynamic data (could be fetched from API)
-const availableTimes = [
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-];
+// Import slot management utilities
+import { type TimeSlot } from '@/lib/utils';
+import { AvailabilityCalendar, type DateAvailability } from '@/components/ui/calendar';
 
 // Define Branch type
 interface Branch {
@@ -57,6 +51,7 @@ export default function BookServicePage() {
   const [service, setService] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -79,11 +74,67 @@ export default function BookServicePage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [formError, setFormError] = useState<string>("");
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [availabilityData, setAvailabilityData] = useState<Record<string, DateAvailability>>({});
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+
 
   useEffect(() => {
     const timer = setTimeout(() => setFakeLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Fetch availability data for calendar
+  useEffect(() => {
+    fetchAvailabilityData();
+  }, []);
+
+  // Function to fetch available time slots
+  const fetchAvailableSlots = async (selectedDate: string) => {
+    if (!selectedDate) return;
+    
+    setLoadingSlots(true);
+    try {
+      const response = await fetch(`/api/available-slots?date=${selectedDate}&type=service`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableSlots(data.availableSlots || []);
+      } else {
+        console.error('Failed to fetch available slots');
+        setAvailableSlots([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots:', error);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  // Function to fetch availability data for calendar
+  const fetchAvailabilityData = async () => {
+    setLoadingAvailability(true);
+    try {
+      const today = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 6);
+      
+      const response = await fetch(`/api/available-slots?startDate=${today.toISOString().split('T')[0]}&endDate=${endDate.toISOString().split('T')[0]}&type=service`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailabilityData(data.availability || {});
+      } else {
+        console.error('Failed to fetch availability data');
+        setAvailabilityData({});
+      }
+    } catch (error) {
+      console.error('Error fetching availability data:', error);
+      setAvailabilityData({});
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -443,6 +494,9 @@ export default function BookServicePage() {
       setPostSubmitLoading(false);
       return;
     }
+    
+    const result = await res.json();
+    
     setTimeout(() => {
       // Save booking data to localStorage
       localStorage.setItem("lastBooking", JSON.stringify(booking));
@@ -536,18 +590,18 @@ export default function BookServicePage() {
         <div className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden">
           {/* Header with stepper */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-600 p-6 text-white">
-            {/* Back to Home button */}
+            {/* Back to Choice button */}
             <div className="p-4">
               <Button
                 type="button"
                 className="flex items-center gap-2 bg-blue-500 hover:text-black hover:bg-yellow-400"
-                onClick={() => router.push("/")}
+                onClick={() => router.push("/choose-booking")}
               >
                 <ArrowLeftIcon className="h-4 w-4" />
-                Back to Home
+                Back to Choice
               </Button>
             </div>
-            <h1 className="text-2xl font-bold mb-2">Book Your Service</h1>
+            <h1 className="text-2xl font-bold mb-2">Books Your Service</h1>
             <div className="flex justify-between items-center">
               <div className="flex gap-2">
                 {steps.map((stepObj, idx) => (
@@ -632,6 +686,7 @@ export default function BookServicePage() {
                         </span>{" "}
                         {branch}
                       </div>
+
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">
                           Date:
@@ -874,15 +929,61 @@ export default function BookServicePage() {
                         <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                           Appointment Date
                         </label>
-                        <input
-                          type="date"
-                          value={date}
-                          onChange={(e) => setDate(e.target.value)}
-                          min={today.toISOString().split("T")[0]}
-                          max={maxDate.toISOString().split("T")[0]}
-                          className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                          required
-                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {selectedDate ? (
+                                selectedDate.toLocaleDateString()
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <AvailabilityCalendar
+                              mode="single"
+                              selected={selectedDate}
+                              onSelect={(date: Date | undefined) => {
+                                setSelectedDate(date);
+                                if (date) {
+                                  const dateString = date.toISOString().split('T')[0];
+                                  setDate(dateString);
+                                  setTime(""); // Reset time when date changes
+                                  fetchAvailableSlots(dateString);
+                                }
+                              }}
+                              initialFocus
+                              fromDate={new Date()}
+                              toDate={(() => {
+                                const maxDate = new Date();
+                                maxDate.setMonth(maxDate.getMonth() + 6);
+                                return maxDate;
+                              })()}
+                              disabled={(date: Date) => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const selectedDate = new Date(date);
+                                selectedDate.setHours(0, 0, 0, 0);
+                                
+                                // Disable past dates
+                                if (selectedDate < today) return true;
+                                
+                                // Disable dates more than 6 months in the future
+                                const maxDate = new Date();
+                                maxDate.setMonth(maxDate.getMonth() + 6);
+                                if (selectedDate > maxDate) return true;
+                                
+                                return false;
+                              }}
+                              availabilityData={availabilityData}
+                              showAvailabilityIndicators={true}
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       {date && (
@@ -890,23 +991,44 @@ export default function BookServicePage() {
                           <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                             Available Times
                           </label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {availableTimes.map((t) => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => setTime(t)}
-                                className={`py-2 rounded-lg transition-all
-                                ${
-                                  time === t
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                                }`}
-                              >
-                                {t}
-                              </button>
-                            ))}
-                          </div>
+                          {loadingSlots ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                              <span className="ml-2 text-gray-600">Loading available times...</span>
+                            </div>
+                          ) : availableSlots.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                              <p>No available time slots for this date.</p>
+                              <p className="text-sm">Please select a different date.</p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-2">
+                              {availableSlots.map((slot) => (
+                                <button
+                                  key={slot.time}
+                                  type="button"
+                                  onClick={() => slot.available && setTime(slot.time)}
+                                  disabled={!slot.available}
+                                  className={`py-2 rounded-lg transition-all text-sm
+                                  ${
+                                    time === slot.time
+                                      ? "bg-blue-600 text-white"
+                                      : slot.available
+                                      ? "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                      : "bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed"
+                                  }`}
+                                  title={slot.conflictingBooking ? `Booked by ${slot.conflictingBooking.name}` : undefined}
+                                >
+                                  {slot.time}
+                                  {slot.conflictingBooking && (
+                                    <div className="text-xs text-red-500 mt-1">
+                                      Booked
+                                    </div>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1052,6 +1174,7 @@ export default function BookServicePage() {
                           </span>
                           <span className="font-medium">{branch}</span>
                         </div>
+
                         <div className="flex justify-between border-b pb-3">
                           <span className="text-gray-500 dark:text-gray-400">
                             Date:

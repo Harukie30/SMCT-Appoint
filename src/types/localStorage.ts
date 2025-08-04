@@ -42,7 +42,7 @@ export interface Booking {
   service: string;
   date: string;
   time: string;
-  status: "Pending" | "No Show" | "Done" | "Canceled";
+  status: "Pending" | "Confirmed" | "No Show" | "Done" | "Canceled";
   email: string;
   assignedEmployee?: string; // Name of the assigned employee
   phone: string;
@@ -57,6 +57,8 @@ export interface Employee {
   email: string;
   branch: string;
   password?: string;
+  phone?: string;
+  role?: string;
 }
 
 export interface Branch {

@@ -1,4 +1,4 @@
-"useclient";
+"use client";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -90,14 +90,17 @@ export default function Home() {
         <p className="text-base sm:text-lg text-blue-600 dark:text-indigo-300 mb-10 z-10 font-medium">
           Fast, reliable, and designed for your business needs.
         </p>
-        <Link href="/book-service" passHref>
-          <Button
-            className="text-lg px-8 py-6 rounded-full shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white z-10"
-            size="lg"
-          >
-            Get Started
-          </Button>
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center z-10">
+          <Link href="/choose-booking" passHref>
+            <Button
+              className="text-lg px-8 py-6 rounded-full shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white"
+              size="lg"
+            >
+              Get Started
+            </Button>
+          </Link>
+        </div>
+        
       </header>
 
       {/* Features Section */}

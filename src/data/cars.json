@@ -1,0 +1,57 @@
+[
+  {
+    "id": 2,
+    "brand": "Honda",
+    "model": "CR-V",
+    "year": "2022",
+    "color": "Blue",
+    "price": "$28,000",
+    "status": "Available",
+    "description": "Popular SUV with excellent safety ratings",
+    "imageUrl": ""
+  },
+  {
+    "id": 3,
+    "brand": "Tesla",
+    "model": "Model 3",
+    "year": "2024",
+    "color": "Red",
+    "price": "$45,000",
+    "status": "Available",
+    "description": "Electric sedan with advanced autopilot features",
+    "imageUrl": ""
+  },
+  {
+    "id": 4,
+    "brand": "BMW",
+    "model": "X5",
+    "year": "2023",
+    "color": "Black",
+    "price": "$65,000",
+    "status": "Available",
+    "description": "Luxury SUV with premium interior and performance",
+    "imageUrl": ""
+  },
+  {
+    "id": 5,
+    "brand": "Mercedes",
+    "model": "C-Class",
+    "year": "2024",
+    "color": "Silver",
+    "price": "$55,000",
+    "status": "Available",
+    "description": "Luxury sedan with cutting-edge technology",
+    "imageUrl": ""
+  },
+  {
+    "model": "hodann",
+    "brand": "kaonn",
+    "year": "2027",
+    "color": "black",
+    "price": "200000",
+    "status": "Available",
+    "description": "",
+    "imageUrl": "",
+    "id": 1754032323984
+  }
+]

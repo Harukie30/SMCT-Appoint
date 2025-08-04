@@ -1,21 +1,19 @@
 [
   {
     "id": 1,
-    "name": "John Doe",
-    "email": "john.doe@example.com",
-    "branch": "Main Branch",
-    "password": "emp123"
+    "name": "moz",
+    "email": "moz@yahoo.com",
+    "branch": "Tagb HO",
+    "password": "123456zx",
+    "phone": "90294123211"
   },
   {
-    "id": 2,
-    "name": "Jane Smith",
-    "email": "jane.smith@example.com",
-    "branch": "Main Branch"
-  },
-  {
-    "id": 3,
-    "name": "Alice Brown",
-    "email": "alice.brown@example.com",
-    "branch": "Branch B"
+    "id": 5,
+    "name": "moz2",
+    "email": "moz2@yahoo.com",
+    "branch": "kaon",
+    "password": "1234567",
+    "phone": "12301292929",
+    "role": "employee"
   }
-] 
+]

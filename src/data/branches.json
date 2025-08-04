@@ -1,30 +1,16 @@
 [
   {
-    "id": 1,
-    "name": "TAGB HO",
-    "address": "123 Main St",
-    "hours": "9AM-7PM",
-    "location": "City Center"
+    "name": "Tagb HO",
+    "address": "J.A Clarin st. tagbilaran city",
+    "hours": "2",
+    "location": "tagbialran city, 6300",
+    "id": 2
   },
   {
-    "id": 2,
-    "name": "TAGB HO2",
-    "address": "456 High Ave",
-    "hours": "8AM-8PM",
-    "location": "City Center"
-  },
-  {
-    "id": 3,
-    "name": "Suburb",
-    "address": "789 Park Blvd",
-    "hours": "10AM-6PM",
-    "location": "Suburbs"
-  },
-  {
-    "name": "asdasd",
-    "address": "asdasd",
-    "hours": "asdasd",
-    "location": "adsasd",
-    "id": 4
+    "name": "kaon",
+    "address": "kaon city",
+    "hours": "8AM",
+    "location": "kaon street",
+    "id": 3
   }
 ]

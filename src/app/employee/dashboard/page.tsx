@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Booking, Employee } from "@/types/localStorage";
+import { AppointmentNotificationBell } from "@/components/ui/appointment-notification-bell";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -13,7 +14,9 @@ import {
   UserMinusIcon,
 } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
-import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogClose, DialogHeader, DialogFooter } from "@/components/ui/dialog";
+import Image from "next/image";
+import { toast } from "sonner";
 
 
 // Types
@@ -35,42 +38,191 @@ const STATUS_COLORS = {
 };
 
 // Components
+function ProfileEditModal({ 
+  isOpen, 
+  onClose, 
+  employee, 
+  onUpdate 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  employee: Employee | null;
+  onUpdate: (updatedEmployee: { name: string; email: string; phone: string; branch: string }) => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: employee?.name || "",
+    email: employee?.email || "",
+    phone: employee?.phone || "",
+    branch: employee?.branch || ""
+  });
+  const [branches, setBranches] = useState<Array<{ id: number; name: string }>>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+
+  useEffect(() => {
+    if (employee) {
+      setFormData({
+        name: employee.name,
+        email: employee.email,
+        phone: employee.phone || "",
+        branch: employee.branch
+      });
+    }
+  }, [employee]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      setLoadingBranches(true);
+      try {
+        const response = await fetch('/api/branches');
+        if (response.ok) {
+          const branchesData = await response.json();
+          setBranches(branchesData);
+        } else {
+          console.error('Failed to fetch branches');
+        }
+      } catch (error) {
+        console.error('Error fetching branches:', error);
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchBranches();
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdate(formData);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Profile</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Name
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Branch
+            </label>
+            <select
+              value={formData.branch}
+              onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+              disabled={loadingBranches}
+            >
+              <option value="">
+                {loadingBranches ? "Loading branches..." : "Select Branch"}
+              </option>
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.name}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
+            {loadingBranches && (
+              <p className="text-xs text-gray-500 mt-1">Loading available branches...</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function EmployeeSidebar({
   bookings,
   onUpcomingClick,
   onDashboardClick,
   onCanceledClick,
   onCompletedClick,
-  onNoShowClick // Add this
+  onNoShowClick
 }: {
   bookings: Booking[];
   onUpcomingClick: () => void;
   onDashboardClick: () => void;
   onCanceledClick: () => void;
   onCompletedClick: () => void;
-  onNoShowClick: () => void; // Add this
+  onNoShowClick: () => void;
 }) {
   // Get next 3 upcoming appointments (by soonest date+time)
   const now = new Date();
   const upcoming = bookings
     .filter((b) => {
       const dt = new Date(`${b.date}T${b.time}`);
-      return dt >= now;
+      return dt >= now && b.status !== "Canceled" && b.status !== "Done" && b.status !== "No Show";
     })
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, 3);
 
   return (
     <aside className="w-64 bg-gradient-to-b from-blue-600 to-blue-700 text-white flex flex-col py-8 px-4 shadow-xl min-h-screen">
-      <div className="text-2xl font-bold mb-8 px-3 flex items-center gap-2">
-        <CogIcon className="h-6 w-6" />
-        <span>Employee Portal</span>
+      <div className="text-center mb-8">
+        <Image 
+          src="/smct.png" 
+          alt="SMCT Logo" 
+          width={100} 
+          height={100} 
+          className="mx-auto mb-3 rounded-lg"
+        />
+        <div className="text-xl font-bold flex items-center justify-center gap-2">
+          <CogIcon className="h-5 w-5" />
+          <span>Employee Portal</span>
+        </div>
       </div>
       <nav className="flex-1 space-y-2 mb-8">
         <button
           type="button"
           onClick={onDashboardClick}
-          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-700/50 hover:bg-blue-700 transition-colors font-medium w-full text-left"
+          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-400/50 hover:bg-blue-700 transition-colors font-medium w-full text-left"
         >
           <UserIcon className="h-5 w-5" />
           Dashboard
@@ -78,7 +230,7 @@ function EmployeeSidebar({
         <button
           type="button"
           onClick={onUpcomingClick}
-          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-700/30 hover:bg-blue-700 transition-colors font-medium w-full text-left"
+          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-400/30 hover:bg-blue-700 transition-colors font-medium w-full text-left"
         >
           <ClockIcon className="h-5 w-5" />
           Upcoming Appointments
@@ -86,7 +238,7 @@ function EmployeeSidebar({
         <button
           type="button"
           onClick={onCanceledClick}
-          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-700/30 hover:bg-blue-700 transition-colors font-medium w-full text-left"
+          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-400/30 hover:bg-gray-800 transition-colors font-medium w-full text-left"
         >
           <XCircleIcon className="h-5 w-5" />
           Canceled Appointments
@@ -94,7 +246,7 @@ function EmployeeSidebar({
         <button
           type="button"
           onClick={onCompletedClick}
-          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-700/30 hover:bg-blue-700 transition-colors font-medium w-full text-left"
+          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-400/30 hover:bg-green-800 transition-colors font-medium w-full text-left"
         >
           <CheckCircleIcon className="h-5 w-5" />
           Completed Appointments
@@ -102,12 +254,11 @@ function EmployeeSidebar({
         <button
           type="button"
           onClick={onNoShowClick}
-          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-700/30 hover:bg-blue-700 transition-colors font-medium w-full text-left"
+          className="flex items-center gap-3 py-3 px-4 rounded-lg bg-blue-400/30 hover:bg-red-800 transition-colors font-medium w-full text-left"
         >
           <UserMinusIcon className="h-5 w-5" />
           No Show Appointments
         </button>
-
       </nav>
       {upcoming.length > 0 && (
         <div className="mb-8">
@@ -256,7 +407,7 @@ function StatusSummaryCards({ bookings }: { bookings: Booking[] }) {
     Canceled: "bg-gray-100 border-gray-200",
   };
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
       {statusCounts.map(({ status, count }) => (
         <div
           key={status}
@@ -271,10 +422,13 @@ function StatusSummaryCards({ bookings }: { bookings: Booking[] }) {
   );
 }
 
-function AppointmentActions({ booking, onStatusChange }: { booking: Booking; onStatusChange: (id: number, status: StatusOption) => void }) {
+function AppointmentActions({ booking, onStatusChange, allowActions = false }: { booking: Booking; onStatusChange: (id: number, status: StatusOption) => void; allowActions?: boolean }) {
   const isDone = booking.status === "Done";
   const isCanceled = booking.status === "Canceled";
   const isNoShow = booking.status === "No Show";
+
+  // If allowActions is true, always enable actions
+  const disabled = !allowActions && (isDone || isCanceled || isNoShow);
 
   return (
     <div className="flex gap-2">
@@ -283,16 +437,15 @@ function AppointmentActions({ booking, onStatusChange }: { booking: Booking; onS
         variant={isDone ? "outline" : "default"}
         className="gap-1 bg-green-600 text-white hover:bg-green-400"
         onClick={() => onStatusChange(booking.id, "Done")}
-        disabled={isDone || isCanceled || isNoShow}
+        disabled={disabled}
       >
         <CheckCircleIcon className="h-4 w-4" /> Done
       </Button>
       <Button
         size="sm"
-
-        className="gap-1 bg-yellow-600 hover:bg-yellow-400 "
+        className="gap-1 bg-red-600 hover:bg-red-400 "
         onClick={() => onStatusChange(booking.id, "No Show")}
-        disabled={isDone || isCanceled || isNoShow}
+        disabled={disabled}
       >
         <XCircleIcon className="h-4 w-4" /> No Show
       </Button>
@@ -301,7 +454,7 @@ function AppointmentActions({ booking, onStatusChange }: { booking: Booking; onS
         variant={isCanceled ? "outline" : "destructive"}
         className="gap-1"
         onClick={() => onStatusChange(booking.id, "Canceled")}
-        disabled={isDone || isCanceled || isNoShow}
+        disabled={disabled}
       >
         <XCircleIcon className="h-4 w-4" /> Cancel
       </Button>
@@ -343,8 +496,7 @@ function UpcomingAppointmentsTable({ bookings, onStatusChange, onViewDetails }: 
                   <td className="px-6 py-4 whitespace-nowrap text-gray-900">{b.time}</td>
                   <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={b.status} /></td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <AppointmentActions booking={b} onStatusChange={onStatusChange} />
-                    <Button size="sm" variant="outline" onClick={() => onViewDetails(b)}>
+                    <Button size="sm" className="bg-blue-500 text-white hover:bg-blue-700" onClick={() => onViewDetails(b)}>
                       View Details
                     </Button>
                   </td>
@@ -393,7 +545,7 @@ function CanceledAppointmentsTable({ bookings, onStatusChange, onViewDetails }: 
                   <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={b.status} /></td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <AppointmentActions booking={b} onStatusChange={onStatusChange} />
-                    <Button size="sm" variant="outline" onClick={() => onViewDetails(b)}>
+                    <Button size="sm" className="bg-blue-500 text-white mt-2 hover:bg-blue-700 " onClick={() => onViewDetails(b)}>
                       View Details
                     </Button>
                   </td>
@@ -442,7 +594,7 @@ function CompletedAppointmentsTable({ bookings, onStatusChange, onViewDetails }:
                   <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={b.status} /></td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <AppointmentActions booking={b} onStatusChange={onStatusChange} />
-                    <Button size="sm" variant="outline" onClick={() => onViewDetails(b)}>
+                    <Button size="sm" className="bg-blue-500 text-white mt-2 hover:bg-blue-700 " onClick={() => onViewDetails(b)}>
                       View Details
                     </Button>
                   </td>
@@ -490,8 +642,8 @@ function NoShowAppointmentsTable({ bookings, onStatusChange, onViewDetails }: { 
                   <td className="px-6 py-4 whitespace-nowrap text-gray-900">{b.time}</td>
                   <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={b.status} /></td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <AppointmentActions booking={b} onStatusChange={onStatusChange} />
-                    <Button size="sm" variant="outline" onClick={() => onViewDetails(b)}>
+                    <AppointmentActions booking={b} onStatusChange={onStatusChange} allowActions={true} />
+                    <Button size="sm" className="bg-blue-500 text-white mt-2 hover:bg-blue-700 " onClick={() => onViewDetails(b)}>
                       View Details
                     </Button>
                   </td>
@@ -508,24 +660,129 @@ function NoShowAppointmentsTable({ bookings, onStatusChange, onViewDetails }: { 
 
 function UserProfileCard() {
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/employees')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setEmployee(data[0]); // Display the first employee for now
+    const fetchEmployeeInfo = async () => {
+      try {
+        const employeeName = localStorage.getItem("employeeName");
+        const userRole = localStorage.getItem("userRole");
+        
+        if (userRole === "admin") {
+          // Admin user
+          setEmployee({
+            id: 0,
+            name: "Admin",
+            email: "admin@company.com",
+            branch: "Main Branch",
+            phone: "",
+            password: "",
+            role: "admin"
+          });
+        } else if (userRole === "employee" && employeeName) {
+          // Employee user - fetch from API
+          const response = await fetch('/api/employees');
+          const employees = await response.json();
+          const employee = employees.find((e: Employee) => e.name === employeeName);
+          
+          if (employee) {
+            setEmployee(employee);
+          } else {
+            // Fallback to localStorage if employee not found in API
+            setEmployee({
+              id: 0,
+              name: employeeName,
+              email: `${employeeName}@company.com`,
+              branch: "Main Branch",
+              phone: "",
+              password: "",
+              role: "employee"
+            });
+          }
+        } else {
+          // Default user
+          setEmployee({
+            id: 0,
+            name: "User",
+            email: "user@company.com",
+            branch: "Main Branch",
+            phone: "",
+            password: "",
+            role: "user"
+          });
         }
-      })
-      .catch(err => console.error("Failed to fetch employees:", err));
+      } catch (error) {
+        console.error("Error fetching employee info:", error);
+        // Fallback to localStorage data
+        const employeeName = localStorage.getItem("employeeName") || "User";
+        setEmployee({
+          id: 0,
+          name: employeeName,
+          email: `${employeeName}@company.com`,
+          branch: "Main Branch",
+          phone: "",
+          password: "",
+          role: "employee"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEmployeeInfo();
   }, []);
 
   const handleLogout = () => {
-    router.push("/login");
+    try {
+      localStorage.removeItem("adminLoggedIn");
+      localStorage.removeItem("employeeLoggedIn");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("employeeName");
+      localStorage.removeItem("managementMode");
+      toast.success("Logged out successfully");
+      router.push("/login");
+    } catch (error) {
+      console.error('Error during logout:', error);
+      toast.error("Error during logout");
+      router.push("/login");
+    }
   };
 
-  if (!employee) {
+  const handleProfileUpdate = async (updatedData: { name: string; email: string; phone: string; branch: string }) => {
+    try {
+      if (employee && employee.role === "employee") {
+        // Update employee profile in the employees API
+        await fetch('/api/employees', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: employee.id,
+            name: updatedData.name,
+            email: updatedData.email,
+            phone: updatedData.phone,
+            branch: updatedData.branch,
+            password: employee.password, // Keep existing password
+            role: employee.role // Keep existing role
+          }),
+        });
+        
+        // Update localStorage
+        localStorage.setItem("employeeName", updatedData.name);
+        
+        // Update local state
+        setEmployee(prev => prev ? { ...prev, ...updatedData } : null);
+        
+        // Show success message (you can add toast notification here)
+        console.log("Profile updated successfully");
+      }
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+    }
+  };
+
+  if (isLoading) {
     return (
       <div className="flex items-center gap-3 bg-white rounded-xl shadow px-4 py-3 mb-8 justify-end">
         <UserCircleIcon className="h-10 w-10 text-gray-300" />
@@ -539,22 +796,57 @@ function UserProfileCard() {
     );
   }
 
-  return (
-    <div className="flex items-center gap-3 bg-white rounded-xl shadow px-4 py-3 mb-8 justify-end">
-      <UserCircleIcon className="h-10 w-10 text-blue-500" />
-      <div>
-        <div className="font-semibold text-gray-700">{employee.name}</div>
-        <div className="text-sm text-gray-500">{employee.email}</div>
-        <div className="text-xs text-blue-700">{employee.branch}</div>
+  if (!employee) {
+    return (
+      <div className="flex items-center gap-3 bg-white rounded-xl shadow px-4 py-3 mb-8 justify-end">
+        <UserCircleIcon className="h-10 w-10 text-gray-300" />
+        <div>
+          <div className="font-semibold text-gray-700">Employee not found</div>
+        </div>
+        <Button size="sm" variant="destructive" className="ml-4" onClick={handleLogout}>
+          Logout
+        </Button>
       </div>
-      <Button size="sm" variant="destructive" className="ml-4" onClick={handleLogout}>
-        Logout
-      </Button>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center gap-3 bg-white rounded-xl shadow px-4 py-3 mb-8 justify-end">
+        <UserCircleIcon className="h-10 w-10 text-blue-500" />
+        <div>
+          <div className="font-semibold text-gray-700">{employee.name}</div>
+          <div className="text-sm text-gray-500">{employee.email}</div>
+          <div className="text-xs text-blue-700 capitalize">{employee.role}</div>
+          <div className="text-xs text-gray-500">{employee.branch}</div>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setShowEditModal(true)}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            Edit
+          </Button>
+          <Button size="sm" variant="destructive" onClick={handleLogout}>
+            Logout
+          </Button>
+        </div>
+      </div>
+      
+      <ProfileEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        employee={employee}
+        onUpdate={handleProfileUpdate}
+      />
+    </>
   );
 }
 
 export default function EmployeeDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [serviceFilter, setServiceFilter] = useState("");
@@ -565,11 +857,31 @@ export default function EmployeeDashboard() {
   const [showNoShow, setShowNoShow] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
+  const toastTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
 
   const upcomingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoading(true);
+    
+    // Get current employee info
+    const employeeName = localStorage.getItem("employeeName");
+    const userRole = localStorage.getItem("userRole");
+    
+    if (userRole === "employee" && employeeName) {
+      // Fetch employee details
+      fetch('/api/employees')
+        .then(res => res.json())
+        .then(employees => {
+          const employee = employees.find((e: Employee) => e.name === employeeName);
+          if (employee) {
+            setCurrentEmployee(employee);
+          }
+        });
+    }
+
     fetch('/api/bookings')
       .then(res => res.json())
       .then(data => {
@@ -578,19 +890,81 @@ export default function EmployeeDashboard() {
       });
   }, []);
 
-  // Filter bookings
-  const filteredBookings = bookings.filter(
-    (b) =>
-      (!serviceFilter || b.service === serviceFilter) &&
-      (!timeFilter || b.time === timeFilter)
-  );
+  const now = new Date();
+  // Filter bookings - only show bookings assigned to current employee
+  let filteredBookings = bookings;
+  
+  // Filter by assigned employee if current employee is logged in
+  if (currentEmployee && currentEmployee.role === "employee") {
+    filteredBookings = bookings.filter(b => b.assignedEmployee === currentEmployee.name);
+  }
+  
+  if (!showCompleted && !showCanceled && !showNoShow) {
+    const now = new Date();
+    filteredBookings = filteredBookings.filter(
+      (b) => {
+        const dt = new Date(`${b.date}T${b.time}`);
+        return (
+          (!serviceFilter || b.service === serviceFilter) &&
+          (!timeFilter || b.time === timeFilter) &&
+          dt >= now &&
+          b.status !== "Done" &&
+          b.status !== "No Show" &&
+          b.status !== "Canceled"
+        );
+      }
+    );
+  } else if (showCompleted) {
+    filteredBookings = filteredBookings.filter(
+      (b) => b.status === "Done" && (!serviceFilter || b.service === serviceFilter) && (!timeFilter || b.time === timeFilter)
+    );
+  } else if (showCanceled) {
+    filteredBookings = filteredBookings.filter(
+      (b) => b.status === "Canceled" && (!serviceFilter || b.service === serviceFilter) && (!timeFilter || b.time === timeFilter)
+    );
+  } else if (showNoShow) {
+    filteredBookings = filteredBookings.filter(
+      (b) => b.status === "No Show" && (!serviceFilter || b.service === serviceFilter) && (!timeFilter || b.time === timeFilter)
+    );
+  }
 
-  // Get next appointment
+  // Get next appointment (exclude canceled, done, no show)
   const nextAppointment = filteredBookings.length
-    ? [...filteredBookings].sort((a, b) =>
-        (a.date + a.time).localeCompare(b.date + b.time)
-      )[0]
+    ? [...filteredBookings]
+        .filter((b) => {
+          const dt = new Date(`${b.date}T${b.time}`);
+          return dt >= now && b.status !== "Canceled" && b.status !== "Done" && b.status !== "No Show";
+        })
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0]
     : null;
+
+  // Get next 3 upcoming appointments (by soonest date+time) - only assigned to current employee
+  let upcomingList = bookings
+    .filter((b) => {
+      const dt = new Date(`${b.date}T${b.time}`);
+      return dt >= now && b.status !== "Canceled" && b.status !== "Done" && b.status !== "No Show";
+    })
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .slice(0, 3);
+
+  // Filter by assigned employee if current employee is logged in
+  if (currentEmployee && currentEmployee.role === "employee") {
+    upcomingList = upcomingList.filter(b => b.assignedEmployee === currentEmployee.name);
+  }
+
+  // Pass onCancel to upcomingList
+  const upcomingListWithCancel = upcomingList.map((b) => ({ ...b, onCancel: (id: number) => handleStatusChange(id, "Canceled") }));
+
+  // Filter lists by assigned employee if current employee is logged in
+  let canceledList = bookings.filter((b) => b.status === "Canceled");
+  let completedList = bookings.filter((b) => b.status === "Done");
+  let noShowList = bookings.filter((b) => b.status === "No Show");
+
+  if (currentEmployee && currentEmployee.role === "employee") {
+    canceledList = canceledList.filter(b => b.assignedEmployee === currentEmployee.name);
+    completedList = completedList.filter(b => b.assignedEmployee === currentEmployee.name);
+    noShowList = noShowList.filter(b => b.assignedEmployee === currentEmployee.name);
+  }
 
   // Handle status change
   const handleStatusChange = async (id: number, status: StatusOption) => {
@@ -603,11 +977,27 @@ export default function EmployeeDashboard() {
     fetch('/api/bookings')
       .then(res => res.json())
       .then(data => setBookings(Array.isArray(data) ? data : []));
+    // Show toast
+    let message = '';
+    let type: 'success' | 'warning' | 'error' = 'success';
+    if (status === 'Done') {
+      message = 'Appointment marked as completed!';
+      type = 'success';
+    } else if (status === 'No Show') {
+      message = 'Appointment marked as no show.';
+      type = 'warning';
+    } else if (status === 'Canceled') {
+      message = 'Appointment canceled.';
+      type = 'error';
+    }
+    setToast({ message, type });
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    toastTimeout.current = setTimeout(() => setToast(null), 3000);
   };
 
   // Get unique values for filters
-  const uniqueServices = Array.from(new Set(bookings.map((b) => b.service)));
-  const uniqueTimes = Array.from(new Set(bookings.map((b) => b.time)));
+  const uniqueServices = Array.from(new Set(filteredBookings.map((b) => b.service)));
+  const uniqueTimes = Array.from(new Set(filteredBookings.map((b) => b.time)));
 
   const handleUpcomingClick = () => {
     setShowUpcoming((prev) => !prev);
@@ -658,28 +1048,11 @@ export default function EmployeeDashboard() {
     setSelectedBooking(null);
   }
 
-  // Get next 3 upcoming appointments (by soonest date+time)
-  const now = new Date();
-  const upcomingList = bookings
-    .filter((b) => {
-      const dt = new Date(`${b.date}T${b.time}`);
-      return dt >= now;
-    })
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-    .slice(0, 3);
-
-  // Pass onCancel to upcomingList
-  const upcomingListWithCancel = upcomingList.map((b) => ({ ...b, onCancel: (id: number) => handleStatusChange(id, "Canceled") }));
-
-  const canceledList = bookings.filter((b) => b.status === "Canceled");
-  const completedList = bookings.filter((b) => b.status === "Done");
-  const noShowList = bookings.filter((b) => b.status === "No Show");
-
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-100">
       <EmployeeSidebar
-        bookings={bookings}
+        bookings={filteredBookings}
         onUpcomingClick={handleUpcomingClick}
         onDashboardClick={handleDashboardClick}
         onCanceledClick={handleCanceledClick}
@@ -687,10 +1060,18 @@ export default function EmployeeDashboard() {
         onNoShowClick={handleNoShowClick}
       />
 
-      <main className="flex-1 p-8">
-        <div className="flex justify-end">
+             <main className="flex-1 p-6">
+                 <div className="flex justify-end items-center gap-4">
+          <AppointmentNotificationBell />
           <UserProfileCard />
         </div>
+        {toast && (
+          <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded shadow-lg text-white font-semibold transition-all
+            ${toast.type === 'success' ? 'bg-green-600' : toast.type === 'warning' ? 'bg-yellow-500' : 'bg-red-600'}`}
+          >
+            {toast.message}
+          </div>
+        )}
         {loading ? (
           <LoadingSpinner />
         ) : showUpcoming ? (
@@ -723,17 +1104,20 @@ export default function EmployeeDashboard() {
           </div>
         ) : (
           <>
-            <header className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-800">
-                Appointment Dashboard
-              </h1>
-              <p className="text-gray-600">
-                Manage and track customer appointments
-              </p>
-            </header>
-            <StatusSummaryCards bookings={bookings} />
+                         <header className="mb-8">
+               <div>
+                 <h1 className="text-3xl font-bold text-gray-800">
+                   Appointment Dashboard
+                 </h1>
+                 <p className="text-gray-600">
+                   Manage and track customer appointments
+                 </p>
+
+               </div>
+             </header>
+            <StatusSummaryCards bookings={filteredBookings}  />
             {nextAppointment && <NextAppointmentAlert booking={nextAppointment} />}
-            <BookingFilters
+            <BookingFilters 
               serviceFilter={serviceFilter}
               timeFilter={timeFilter}
               uniqueServices={uniqueServices}
@@ -808,7 +1192,7 @@ export default function EmployeeDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <AppointmentActions booking={booking} onStatusChange={handleStatusChange} />
-                            <Button size="sm" variant="outline" onClick={() => handleViewDetails(booking)}>
+                            <Button size="sm" className="bg-blue-500 text-white mt-2 hover:bg-blue-700 " onClick={() => handleViewDetails(booking)}>
                               View Details
                             </Button>
                           </td>
@@ -824,26 +1208,140 @@ export default function EmployeeDashboard() {
       </main>
       {showDetailsModal && selectedBooking && (
         <Dialog open={showDetailsModal} onOpenChange={handleCloseDetails}>
-          <DialogContent>
-            <DialogTitle>Appointment Details</DialogTitle>
-            <div className="max-h-[60vh] overflow-y-auto pr-4">
-              <div className="space-y-2">
-                <div><span className="font-semibold">Customer:</span> {selectedBooking.name}</div>
-                <div><span className="font-semibold">Email:</span> {selectedBooking.email}</div>
-                <div><span className="font-semibold">Phone:</span> {selectedBooking.phone || '-'}</div>
-                <div><span className="font-semibold">Service:</span> {selectedBooking.service}</div>
-                <div><span className="font-semibold">Branch:</span> {selectedBooking.branch}</div>
-                <div><span className="font-semibold">Date:</span> {selectedBooking.date}</div>
-                <div><span className="font-semibold">Time:</span> {selectedBooking.time}</div>
-                <div><span className="font-semibold">Plate Number:</span> {selectedBooking.plate || '-'}</div>
-                <div><span className="font-semibold">Vehicle Model/Make:</span> {selectedBooking.model || '-'}</div>
-                <div className="break-words whitespace-pre-wrap"><span className="font-semibold">Notes/Requests:</span> {selectedBooking.notes || '-'}</div>
-                <div><span className="font-semibold">Status:</span> {selectedBooking.status}</div>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-semibold">
+                <CalendarIcon className="w-6 h-6 text-blue-600" />
+                Appointment Details
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="max-h-[70vh] overflow-y-auto pr-2">
+              {/* Customer Information Section */}
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <UserIcon className="w-5 h-5" />
+                  Customer Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Name:</span>
+                      <span className="text-gray-900 font-medium">{selectedBooking.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Email:</span>
+                      <span className="text-blue-600">{selectedBooking.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Phone:</span>
+                      <span className="text-gray-900">{selectedBooking.phone || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Information Section */}
+              <div className="bg-green-100 rounded-lg p-4 mb-6">
+                                 <h3 className="text-lg font-semibold text-green-600 mb-3 flex items-center gap-2">
+                   <CogIcon className="w-5 h-5" />
+                   Service Information
+                 </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Service:</span>
+                      <span className="text-gray-900 font-medium">{selectedBooking.service}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Branch:</span>
+                      <span className="text-gray-900">{selectedBooking.branch}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Schedule Information Section */}
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <ClockIcon className="w-5 h-5" />
+                  Schedule Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Date:</span>
+                      <span className="text-gray-900 font-medium">{selectedBooking.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Time:</span>
+                      <span className="text-gray-900">{selectedBooking.time}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vehicle Information Section */}
+              {(selectedBooking.plate || selectedBooking.model) && (
+                <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                                   <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                   <UserIcon className="w-5 h-5" />
+                   Vehicle Information
+                 </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      {selectedBooking.plate && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-600 min-w-[100px]">Plate Number:</span>
+                          <span className="text-gray-900 font-medium">{selectedBooking.plate}</span>
+                        </div>
+                      )}
+                      {selectedBooking.model && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-600 min-w-[100px]">Model/Make:</span>
+                          <span className="text-gray-900">{selectedBooking.model}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes Section */}
+              {selectedBooking.notes && (
+                <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                                   <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                   <CalendarIcon className="w-5 h-5" />
+                   Notes & Requests
+                 </h3>
+                  <div className="bg-white rounded-md p-3 border border-blue-200">
+                    <p className="text-gray-900 whitespace-pre-wrap">{selectedBooking.notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Section */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <CheckCircleIcon className="w-5 h-5" />
+                  Appointment Status
+                </h3>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={selectedBooking.status} />
+                  <span className="text-sm text-gray-600">
+                    Last updated: {new Date().toLocaleDateString()}
+                  </span>
+                </div>
               </div>
             </div>
-            <DialogClose asChild>
-              <Button className="mt-4 w-full" variant="outline">Close</Button>
-            </DialogClose>
+
+            <DialogFooter className="mt-6">
+              <DialogClose asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
